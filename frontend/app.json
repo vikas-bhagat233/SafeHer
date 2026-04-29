@@ -3,6 +3,14 @@
     "name": "SafeHer",
     "slug": "safeher-app",
     "version": "1.0.0",
-    "orientation": "portrait"
+    "orientation": "portrait",
+    "android": {
+      "package": "com.vikas123098.safeherapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "218e8d82-6946-4f0c-b469-a80d34b89396"
+      }
+    }
   }
 }
