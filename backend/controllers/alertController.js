@@ -70,7 +70,7 @@ exports.sendAlert = async (req, res) => {
       `;
 
       await transporter.sendMail({
-        from: process.env.EMAIL,
+        from: process.env.EMAIL_USER,
         to: recipient.email,
         subject: 'EMERGENCY ALERT',
         text: `Hi ${recipient.name},\n\n${userName} has triggered an SOS alert.\nUser ID: ${user_id}\n${coordsText}Location: ${location}`,
