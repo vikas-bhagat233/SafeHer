@@ -1,7 +1,8 @@
 import { View, Text, Alert, ActivityIndicator, StyleSheet, FlatList, Linking, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { Accelerometer } from 'expo-sensors';
 import SOSButton from '../components/SOSButton';
 import ScreenShell from '../components/ScreenShell';
 import SectionCard from '../components/SectionCard';
@@ -20,6 +21,30 @@ export default function HomeScreen({ route, navigation }) {
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [queuedCount, setQueuedCount] = useState(0);
+  const lastShake = useRef(0);
+
+  useEffect(() => {
+    Accelerometer.setUpdateInterval(400);
+    const subscription = Accelerometer.addListener(({ x, y, z }) => {
+      const gForce = Math.sqrt(x * x + y * y + z * z);
+      if (gForce > 3.0) { // Shake threshold
+        const now = Date.now();
+        if (now - lastShake.current > 5000) {
+          lastShake.current = now;
+          sendSOS();
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [contacts, user]);
+
+  const openMap = (query) => {
+    const url = Platform.select({
+      ios: `maps:0,0?q=${query}`,
+      android: `geo:0,0?q=${query}`
+    });
+    Linking.openURL(url);
+  };
 
   const getSmsRecipients = () => {
     return contacts
@@ -120,18 +145,28 @@ export default function HomeScreen({ route, navigation }) {
         setQueuedCount(pending);
 
         Alert.alert(
-          'Offline fallback active',
-          'Internet seems unavailable. SOS was queued and will auto-send once network is back. Open SMS app now to notify emergency contact manually?',
+          'Offline Mode',
+          'Internet is unavailable. Alert saved offline. Please send SMS manually.',
           [
-            { text: 'Not now', style: 'cancel' },
+            { text: 'Cancel', style: 'cancel' },
             {
-              text: 'Open SMS',
+              text: 'Send SMS',
               onPress: () => openSmsFallback(link)
             }
           ]
         );
       } else {
-        Alert.alert('SOS Sent', 'Emergency alert sent successfully.');
+        Alert.alert(
+          'SOS Logged',
+          'Your location was saved. Now, notify your contacts via SMS.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Send SMS',
+              onPress: () => openSmsFallback(link)
+            }
+          ]
+        );
       }
     } catch (err) {
       const message = err.response?.data?.error || 'Unable to send SOS right now.';
@@ -206,9 +241,9 @@ export default function HomeScreen({ route, navigation }) {
         <View style={styles.quickGrid}>
           <PrimaryButton title="Contacts" onPress={() => navigation.navigate('Contacts', { user })} style={styles.quickButton} />
           <PrimaryButton title="Profile" variant="secondary" onPress={() => navigation.navigate('Profile', { user })} style={styles.quickButton} />
+          <PrimaryButton title="Police" variant="secondary" onPress={() => openMap('police+station')} style={styles.quickButton} />
+          <PrimaryButton title="Hospital" variant="secondary" onPress={() => openMap('hospital')} style={styles.quickButton} />
           <PrimaryButton title="History" variant="secondary" onPress={() => navigation.navigate('History', { user })} style={styles.quickButton} />
-          <PrimaryButton title="Evidence" variant="secondary" onPress={() => navigation.navigate('Evidence', { user })} style={styles.quickButton} />
-          <PrimaryButton title="Resources" variant="secondary" onPress={() => navigation.navigate('Resources')} style={styles.quickButton} />
         </View>
       </SectionCard>
 
