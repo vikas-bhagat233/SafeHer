@@ -69,13 +69,20 @@ exports.sendAlert = async (req, res) => {
         </p>
       `;
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: recipient.email,
-        subject: 'EMERGENCY ALERT',
-        text: `Hi ${recipient.name},\n\n${userName} has triggered an SOS alert.\nUser ID: ${user_id}\n${coordsText}Location: ${location}`,
-        html: htmlBody
-      });
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: recipient.email,
+          subject: 'EMERGENCY ALERT',
+          text: `Hi ${recipient.name},\n\n${userName} has triggered an SOS alert.\nUser ID: ${user_id}\n${coordsText}Location: ${location}`,
+          html: htmlBody
+        });
+      } catch (mailError) {
+        console.error('Email send failed:', mailError?.message || mailError);
+        return res.status(500).json({
+          error: 'Email send failed. Check EMAIL_USER/EMAIL_PASSWORD and Gmail app password setup.'
+        });
+      }
     }
 
     return res.json({
