@@ -24,6 +24,6 @@ export const sendAlertWithQueue = async (payload) => {
   }
 };
 
-export const retryQueuedAlerts = async () => {
-  return flushAlerts(sendAlert);
+export const retryQueuedAlerts = async (userId) => {
+  return flushAlerts(sendAlert, userId);
 };

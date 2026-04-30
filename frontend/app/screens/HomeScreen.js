@@ -1,4 +1,5 @@
 import { View, Text, Alert, ActivityIndicator, StyleSheet, FlatList, Linking, Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import SOSButton from '../components/SOSButton';
@@ -9,7 +10,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { theme } from '../utils/theme';
 import api from '../services/api';
 import { getLiveLocation } from '../services/locationService';
-import { getQueuedAlertCount } from '../services/offlineQueueService';
+import { getQueuedAlertCount, queueAlert } from '../services/offlineQueueService';
 import { sendAlertWithQueue, retryQueuedAlerts } from '../services/alertService';
 import { formatDate } from '../utils/helpers';
 
@@ -41,11 +42,11 @@ export default function HomeScreen({ route, navigation }) {
       setLoadingContacts(true);
       const res = await api.get(`/contact/${user.id}`);
       setContacts(Array.isArray(res.data) ? res.data : []);
-      const pending = await getQueuedAlertCount();
+      const pending = await getQueuedAlertCount(user.id);
       setQueuedCount(pending);
       if (pending > 0) {
         try {
-          const result = await retryQueuedAlerts();
+          const result = await retryQueuedAlerts(user.id);
           setQueuedCount(result.remaining);
         } catch {
           // Keep queued count as-is if still offline.
@@ -90,10 +91,32 @@ export default function HomeScreen({ route, navigation }) {
         contacts
       };
 
+      const netState = await NetInfo.fetch();
+      const isOnline = netState.isConnected && netState.isInternetReachable !== false;
+
+      if (!isOnline) {
+        await queueAlert(alertPayload);
+        const pending = await getQueuedAlertCount(user.id);
+        setQueuedCount(pending);
+
+        Alert.alert(
+          'Offline fallback active',
+          'Internet seems unavailable. SOS was queued and will auto-send once network is back. Open SMS app now to notify emergency contact manually?',
+          [
+            { text: 'Not now', style: 'cancel' },
+            {
+              text: 'Open SMS',
+              onPress: () => openSmsFallback(link)
+            }
+          ]
+        );
+        return;
+      }
+
       const result = await sendAlertWithQueue(alertPayload);
 
       if (result.queued) {
-        const pending = await getQueuedAlertCount();
+        const pending = await getQueuedAlertCount(user.id);
         setQueuedCount(pending);
 
         Alert.alert(
@@ -120,7 +143,7 @@ export default function HomeScreen({ route, navigation }) {
 
   const syncQueuedAlerts = async () => {
     try {
-      const result = await retryQueuedAlerts();
+      const result = await retryQueuedAlerts(user?.id);
       setQueuedCount(result.remaining);
       Alert.alert('Sync complete', `Sent: ${result.flushed} | Remaining: ${result.remaining}`);
     } catch {
