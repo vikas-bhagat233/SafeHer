@@ -43,6 +43,14 @@ export default function HomeScreen({ route, navigation }) {
       setContacts(Array.isArray(res.data) ? res.data : []);
       const pending = await getQueuedAlertCount();
       setQueuedCount(pending);
+      if (pending > 0) {
+        try {
+          const result = await retryQueuedAlerts();
+          setQueuedCount(result.remaining);
+        } catch {
+          // Keep queued count as-is if still offline.
+        }
+      }
     } catch (err) {
       setContacts([]);
     } finally {

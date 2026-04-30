@@ -25,18 +25,12 @@ export default function PasswordRecoveryScreen({ navigation }) {
 
     try {
       setLoading(true);
-      const res = await api.post('/auth/verify-security', {
-        email,
-        security_answer: ' '
-      });
-      Alert.alert('Email not found', 'Email not registered');
+      const res = await api.post('/auth/security-question', { email });
+      setSecurityQuestion(res.data.security_question);
+      setStage('answer');
     } catch (err) {
-      if (err.response?.status === 404) {
-        Alert.alert('Not found', 'Email not registered');
-      } else {
-        setSecurityQuestion(err.response?.data?.security_question || 'What is your mother\'s name?');
-        setStage('answer');
-      }
+      const message = err.response?.data?.error || 'Unable to fetch security question';
+      Alert.alert('Unable to continue', message);
     } finally {
       setLoading(false);
     }

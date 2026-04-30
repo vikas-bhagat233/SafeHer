@@ -61,6 +61,36 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.getSecurityQuestion = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const result = await pool.query(
+      'SELECT security_question FROM users WHERE email=$1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const question = result.rows[0].security_question;
+
+    if (!question) {
+      return res.status(400).json({ error: 'No security question configured for this account' });
+    }
+
+    return res.json({ security_question: question });
+  } catch (err) {
+    console.error('Security question error:', err.message);
+    return res.status(500).json({ error: 'Unable to fetch security question' });
+  }
+};
+
 exports.verifySecurityQuestion = async (req, res) => {
   try {
     const { email, security_answer } = req.body;

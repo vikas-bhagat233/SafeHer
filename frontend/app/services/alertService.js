@@ -13,6 +13,9 @@ export const sendAlertWithQueue = async (payload) => {
       response
     };
   } catch (err) {
+    if (err.response) {
+      throw err;
+    }
     await queueAlert(payload);
     return {
       queued: true,
