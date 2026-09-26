@@ -1,0 +1,16 @@
+diff --git a/backend/controllers/authController.js b/backend/controllers/authController.js
+index 1234567..89abcde 100644
+--- a/backend/controllers/authController.js
++++ b/backend/controllers/authController.js
+@@ -38,6 +38,10 @@ exports.login = async (req, res) => {
+     }
+ 
+     const valid = await bcrypt.compare(password, user.password);
+ 
++    if (!process.env.JWT_SECRET) {
++      return res.status(500).json({ error: 'Server configuration error' });
++    }
++
+     if (!valid) {
+       return res.status(400).json({ error: 'Wrong password' });
+     }
